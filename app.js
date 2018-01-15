@@ -6,6 +6,19 @@ var budgetController = (function() {
         this.id = id;
         this.description = description;
         this.value = value;
+        this.percentage = -1;
+    };
+
+    Expense.prototype.calculatePercentage = function(totalIncome) {
+        if (totalIncome > 0) {
+            this.percentage = Math.round(this.value / totalIncome * 100);
+        } else {
+            this.percentage = -1;
+        }
+    };
+
+    Expense.prototype.getPercentage = function() {
+        return this.percentage;
     };
 
     var Income = function(id, description, value) {
@@ -85,6 +98,19 @@ var budgetController = (function() {
         }
     };
 
+    budgetCtrl.calculatePercentages = function() {
+        data.allItems.exp.forEach(function(item) {
+            item.calculatePercentage(data.totals.inc);
+        });
+    };
+
+    budgetCtrl.getPercentages = function() {
+        var percentages = data.allItems.exp.map(function(item) {
+            return item.getPercentage();
+        });
+        return percentages;
+    };
+
     return budgetCtrl;
 })();
 
@@ -99,9 +125,17 @@ var UiController = (function() {
         incomeList: ".income__list",
         expenseList: ".expenses__list",
         budgetValue: ".budget__value",
-        budgetIncome: ".budget__income",
-        budgetExpenses: ".budget__expenses",
-        deleteButton: ".container"
+        budgetIncome: ".budget__income--value",
+        budgetExpenses: ".budget__expenses--value",
+        deleteButton: ".container",
+        percentageLabel: ".item__percentage",
+        budgetExpensesLable: ".budget__expenses--percentage",
+        dateLabel: ".budget__title--month"
+    };
+    var nodeListForEach = function(list, callback) {
+        for (var i = 0; i < list.length; i++) {
+            callback(list[i], i);
+        }
     };
 
     UiCtrl.getDomStrings = function() {
@@ -154,17 +188,82 @@ var UiController = (function() {
             .insertAdjacentHTML("beforeend", newListHtml);
     };
 
-    UiCtrl.displayBudget = function(budgetValue, budgetIncome, budgetExpenses) {
-        document.querySelector(DomStrings.budgetValue).innerHTML = formatNumber(
-            budgetValue,
-            "budget"
-        );
+    UiCtrl.displayBudget = function(
+        budgetValue,
+        budgetIncome,
+        budgetExpenses,
+        budgetPercentage
+    ) {
+        document.querySelector(
+            DomStrings.budgetValue
+        ).textContent = formatNumber(budgetValue, "budget");
         document.querySelector(
             DomStrings.budgetIncome
-        ).innerHTML = formatNumber(budgetIncome, "inc");
+        ).textContent = formatNumber(budgetIncome, "inc");
         document.querySelector(
             DomStrings.budgetExpenses
-        ).innerHTML = formatNumber(budgetExpenses, "exp");
+        ).textContent = formatNumber(budgetExpenses, "exp");
+
+        if (budgetIncome > 0) {
+            document.querySelector(DomStrings.budgetExpensesLable).textContent =
+                budgetPercentage + "%";
+        } else {
+            document.querySelector(DomStrings.budgetExpensesLable).textContent =
+                "---";
+        }
+    };
+
+    UiCtrl.displayPercentages = function(percentages) {
+        var labels = document.querySelectorAll(DomStrings.percentageLabel);
+        nodeListForEach(labels, function(item, index) {
+            if (percentages[index] > 0) {
+                item.textContent = percentages[index] + "%";
+                console.log(percentages[index] + "%");
+            } else {
+                item.textContent = "---";
+            }
+        });
+    };
+
+    UiCtrl.displayMonth = function() {
+        var now, months, month, year;
+
+        now = new Date();
+        months = [
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December"
+        ];
+        month = now.getMonth();
+
+        year = now.getFullYear();
+        document.querySelector(DomStrings.dateLabel).textContent =
+            months[month] + " " + year;
+    };
+
+    UICtrl.changedType = function() {
+        var fields = document.querySelectorAll(
+            DomStrings.type +
+                "," +
+                DomStrings.description +
+                "," +
+                DomStrings.value
+        );
+
+        nodeListForEach(fields, function(cur) {
+            cur.classList.toggle("red-focus");
+        });
+
+        document.querySelector(DomStrings.addButton).classList.toggle("red");
     };
 
     var formatNumber = function(number, type) {
@@ -221,6 +320,7 @@ var appController = (function(budgetController, UiController) {
         UiController.addItemToList(input.type, item);
         updateBudget();
         UiController.clearInput();
+        updatePercentages();
     };
 
     var deleteItem = function(event) {
@@ -233,23 +333,32 @@ var appController = (function(budgetController, UiController) {
             budgetController.deleteItem(type, id);
             UiController.deleteListItem(itemId);
             updateBudget();
+            updatePercentages();
         }
     };
 
     var updateBudget = function() {
         budgetController.calculateBudget();
-        var barget = budgetController.getBudget();
+        var budget = budgetController.getBudget();
         UiController.displayBudget(
-            barget.budget,
-            barget.totalInc,
-            barget.totalExp
+            budget.budget,
+            budget.totalInc,
+            budget.totalExp,
+            budget.percentage
         );
+    };
+
+    var updatePercentages = function() {
+        budgetController.calculatePercentages();
+        var percentages = budgetController.getPercentages();
+        UiController.displayPercentages(percentages);
     };
 
     controller.init = function() {
         console.log("Application Started");
+        UiController.displayMonth();
+        UiController.displayBudget(0, 0, 0, -1);
         setupEventListeners();
-        UiController.displayBudget(0, 0, 0);
     };
 
     return controller;
