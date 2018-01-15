@@ -67,13 +67,22 @@ var budgetController = (function() {
     };
 
     budgetCtrl.getBudget = function() {
-        alert(data.budget);
         return {
             budget: data.budget,
             percentage: data.percentage,
             totalInc: data.totals.inc,
             totalExp: data.totals.exp
         };
+    };
+
+    budgetCtrl.deleteItem = function(type, id) {
+        var ids = data.allItems[type].map(function(item) {
+            return item.id;
+        });
+        var index = ids.indexOf(id);
+        if (index !== -1) {
+            data.allItems[type].splice(index, 1);
+        }
     };
 
     return budgetCtrl;
@@ -91,7 +100,8 @@ var UiController = (function() {
         expenseList: ".expenses__list",
         budgetValue: ".budget__value",
         budgetIncome: ".budget__income",
-        budgetExpenses: ".budget__expenses"
+        budgetExpenses: ".budget__expenses",
+        deleteButton: ".container"
     };
 
     UiCtrl.getDomStrings = function() {
@@ -170,6 +180,11 @@ var UiController = (function() {
         return number;
     };
 
+    UiCtrl.deleteListItem = function(id) {
+        var element = document.getElementById(id);
+        element.parentNode.removeChild(element);
+    };
+
     return UiCtrl;
 })();
 
@@ -186,6 +201,10 @@ var appController = (function(budgetController, UiController) {
                 addItem();
             }
         });
+
+        document
+            .querySelector(DomStrings.deleteButton)
+            .addEventListener("click", deleteItem);
     };
 
     var addItem = function() {
@@ -202,6 +221,19 @@ var appController = (function(budgetController, UiController) {
         UiController.addItemToList(input.type, item);
         updateBudget();
         UiController.clearInput();
+    };
+
+    var deleteItem = function(event) {
+        var itemId, itm, id, type;
+        itemId = event.target.parentNode.parentNode.parentNode.parentNode.id;
+        if (itemId) {
+            item = itemId.split("-");
+            type = item[0];
+            id = parseInt(item[1]);
+            budgetController.deleteItem(type, id);
+            UiController.deleteListItem(itemId);
+            updateBudget();
+        }
     };
 
     var updateBudget = function() {
