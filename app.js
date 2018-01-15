@@ -250,7 +250,7 @@ var UiController = (function() {
             months[month] + " " + year;
     };
 
-    UICtrl.changedType = function() {
+    UiCtrl.changedType = function() {
         var fields = document.querySelectorAll(
             DomStrings.type +
                 "," +
@@ -304,6 +304,10 @@ var appController = (function(budgetController, UiController) {
         document
             .querySelector(DomStrings.deleteButton)
             .addEventListener("click", deleteItem);
+
+        document
+            .querySelector(DomStrings.type)
+            .addEventListener("change", UiController.changedType);
     };
 
     var addItem = function() {
